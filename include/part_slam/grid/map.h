@@ -7,12 +7,60 @@
 
 #include "../utils/point.h"
 #include <assert.h>
-#include "accessstate.h"
-#include "array2d.h"
+#include "harray2d.h"
 
 
 namespace GMapping
 {
+
+// PointAccumulator表示地图中一个cell（栅格）包括的内容
+/*
+ * acc：   栅格累计被击中位置
+ * n：     栅格被击中次数
+ * visits：栅格被访问的次数
+ * */
+// PointAccumulator的一个对象，就是一个栅格，gmapping中其他类模板的cell就是这个
+struct PointAccumulator
+{
+    // float 类型的point
+    typedef point<float> FloatPoint;
+
+    // 该栅格被击中坐标累计值的平均值, 最后取累计值的均值
+    FloatPoint acc;
+    // n表示该栅格被击中的次数，visits表示该栅格被访问的次数
+    int n, visits;
+
+    // 构造函数
+    PointAccumulator() : acc(0, 0), n(0), visits(0)  {  }
+    PointAccumulator(int i) :acc(0, 0), n(0), visits(0)     { assert(i==-1); }
+
+    // 计算栅格被击中坐标累计值的平均值
+    inline Point mean() const   { return 1./n * Point(acc.x, acc.y);  }
+
+    // 返回该栅格被占用的概率，范围是-1（没有访问过）、[0, 1]
+    inline operator double() const  { return visits ? (double)n * 1/(double)visits : -1; }
+
+    // 更新该栅格成员变量
+    inline void update(bool value, const Point& p=Point(0, 0));
+
+};
+
+// 更新该栅格成员变量，value表示该栅格是否被击中，击中n++，未击中仅visit++;
+void PointAccumulator::update(bool value, const Point& p)
+{
+    if (value)      // 被击中
+    {
+        acc.x += static_cast<float>(p.x);
+        acc.y += static_cast<float>(p.y);
+        n ++;
+        visits += 1;
+    }
+    else
+        visits ++;
+}
+
+
+
 
 // 在 gmapping 使用的过程中，cell 为 PointAccumulator数据结构, Storage 为 HierarchicalArray2D<PointAccumulator>存储方式
 
@@ -54,20 +102,22 @@ public:
     // 扩展地图大小
     void grow(double x_min, double y_min, double x_max, double y_max);
 
-    // 物理坐标和栅格坐标的转换
-    inline IntPoint world2map(const Point& p) const;
-    inline IntPoint world2map(double x, double y) const { return world2map(Point(x,y)); }
-    inline Point map2world(const IntPoint& p) const;
-    inline Point map2world(int x, int y) const { return map2world(IntPoint(x,y)); }
+    // 物理坐标和栅格坐标的转换，后面加const，避免修改类的成员
+    inline IntPoint world2map(const Point& p)        const;     // world2map会将物理坐标小于地图分辨率容差的物理坐标 分到一个栅格
+    inline IntPoint world2map(double x, double y)    const { return world2map(Point(x,y)); }
+    inline Point    map2world(const IntPoint& p)     const;
+    inline Point    map2world(int x, int y)          const { return map2world(IntPoint(x,y)); }
 
     // 返回地图的一些参数，包括：大小、分辨率之列的参数
-    inline Point getCenter() const { return m_center; }
+    inline Point getCenter()      const { return m_center; }
     inline double getWorldSizeX() const { return m_worldSizeX; }
     inline double getWorldSizeY() const { return m_worldSizeY; }
 
+    // 返回地图的一些参数
     inline int getMapSizeX() const { return m_mapSizeX; }
     inline int getMapSizeY() const { return m_mapSizeY; }
-    inline double getDelta() const { return m_mapSizeX; }
+    inline double getDelta() const { return m_delta; }
+
 
     inline double getMapResolution() const  { return m_delta; }
     inline double getResolution() const     { return m_delta; }
@@ -77,25 +127,24 @@ public:
         x_min = min.x, y_min=min.y, x_max=max.x, y_max=max.y;
     }
 
-    // 通过物理坐标或者栅格坐标访问栅格状态，调用cell函数
+    // 通过物理坐标或者栅格坐标返回单一栅格对象
     inline Cell& cell(const IntPoint& p);
-    inline Cell& cell(int x, int y)         { return cell(IntPoint(x, y)); }
     inline const Cell& cell(const IntPoint& p) const;
-    inline const Cell& cell(int x, int y) const     { return cell(IntPoint(x, y)); }
-
     inline Cell& cell(const Point& p);
-    inline Cell& cell(double x, double y)   { return cell(Point(x, y)); }
     inline const Cell& cell(const Point& p) const;
-    inline const Cell& cell(double x, double y) const{ return cell(Point(x, y)); }
+
+    inline Cell& cell(int x, int y)                     { return cell(IntPoint(x, y)); }
+    inline const Cell& cell(int x, int y) const         { return cell(IntPoint(x, y)); }
+    inline Cell& cell(double x, double y)               { return cell(Point(x, y)); }
+    inline const Cell& cell(double x, double y) const   { return cell(Point(x, y)); }
 
     // 判断某一个点是否在地图里面 引用的是模板类m_storage(实际上是HierarchicalArray2D)中的函数      Hierarchical登记制度划分
-    inline bool isInside(int x, int y) const        { return m_storage.cellState(IntPoint(x, y))&Inside; }
-    inline bool isInside(const IntPoint& p) const   { return m_storage.cellState(p)&Inside; }
+    inline bool isInside(int x, int y)       const   { return m_storage.cellState(IntPoint(x, y))&Inside; }
+    inline bool isInside(const IntPoint& p)  const   { return m_storage.cellState(p)&Inside; }
+    inline bool isInside(double x, double y) const   { return m_storage.cellState(world2map(x,y))&Inside; }
+    inline bool isInside(const Point& p)     const   { return m_storage.cellState(world2map(p))&Inside; }
 
-    inline bool isInside(double x, double y) const  { return m_storage.cellState(world2map(x,y))&Inside; }
-    inline bool isInside(const Point& p)     const  { return m_storage.cellState(world2map(p))&Inside; }
-
-    // 待验证
+    // 返回m_storage
     inline Storage& storage() { return m_storage; }
     inline const Storage& storage() const { return m_storage; }
 
@@ -161,9 +210,9 @@ void Map<Cell, Storage, isClass>::resize(double x_min, double y_min, double x_ma
 
     int px_min, py_min, px_max, py_max;
     px_min = (int)floor((float)i_min.x / (1<<m_storage.getPatchMagnitude()));
-    px_max = (int)ceil((float)i_max.x/(1<<m_storage.getPatchMagnitude()));
-    py_min = (int)floor((float)i_min.y/(1<<m_storage.getPatchMagnitude()));
-    py_max = (int)ceil((float)i_max.y/(1<<m_storage.getPatchMagnitude()));
+    px_max = (int)ceil ((float)i_max.x / (1<<m_storage.getPatchMagnitude()));
+    py_min = (int)floor((float)i_min.y / (1<<m_storage.getPatchMagnitude()));
+    py_max = (int)ceil ((float)i_max.y / (1<<m_storage.getPatchMagnitude()));
     m_storage.resize(px_min, py_min, px_max, py_max);
 
     m_mapSizeX = m_storage.getXSize() << m_storage.getPatchSize();
@@ -219,6 +268,7 @@ Point Map<Cell,Storage,isClass>::map2world(const IntPoint& p) const
 }
 
 
+// 通过物理坐标或者栅格坐标返回栅格
 // 通过物理坐标 或者 栅格坐标 访问栅格状态
 template <class Cell, class Storage, const bool isClass>
 Cell& Map<Cell,Storage,isClass>::cell(const IntPoint& p)    // 栅格坐标
@@ -228,6 +278,7 @@ Cell& Map<Cell,Storage,isClass>::cell(const IntPoint& p)    // 栅格坐标
         assert(0);
     return m_storage.cell(p);
 }
+
 
 template <class Cell, class Storage, const bool isClass>
 Cell& Map<Cell,Storage,isClass>::cell(const Point& p)       // 物理坐标
@@ -240,24 +291,27 @@ Cell& Map<Cell,Storage,isClass>::cell(const Point& p)       // 物理坐标
 }
 
 template <class Cell, class Storage, const bool isClass>
-const Cell& Map<Cell,Storage,isClass>::cell(const IntPoint& p) const    // 栅格坐标
+const Cell& Map<Cell,Storage,isClass>::cell(const IntPoint& p) const    // 根据栅格坐标，返回栅格
 {
     AccessibilityState s = m_storage.cellState(p);
-    if (s&Allocated)
+    if (s & Allocated)
         return m_storage.cell(p);
     return m_unknown;
 }
 
 template <class Cell, class Storage, const bool isClass>
-const  Cell& Map<Cell,Storage,isClass>::cell(const Point& p) const      // 物理坐标
+const  Cell& Map<Cell,Storage,isClass>::cell(const Point& p) const      // 根据物理坐标，返回栅格
 {
-    IntPoint ip=world2map(p);
+    IntPoint ip = world2map(p);           // world2map会将物理坐标小于地图分辨率容差的物理坐标 分到一个栅格
     AccessibilityState s=m_storage.cellState(ip);
     if (s&Allocated)
         return m_storage.cell(ip);
     return  m_unknown;
 }
 
+// 最终的地图类
+typedef Map< PointAccumulator, HierarchicalArray2D<PointAccumulator> > ScanMatcherMap;        // 一张地图的类
+            // 栅格数据结构               栅格存储方式
 
 };
 

@@ -5,6 +5,7 @@
 #ifndef _MY_SLAM_GMAPPING_RANGEREADING_H_
 #define _MY_SLAM_GMAPPING_RANGEREADING_H_
 
+
 #include <vector>
 #include "../utils/point.h"
 
@@ -16,7 +17,8 @@ class RangeReading
 {
 public:
     // 均匀角度的激光雷达数据
-    RangeReading(unsigned int n_beams, const double* d);
+    // RangeReading(unsigned int n_beams, const double* d);
+
     // 不均匀角度的激光雷达数据
     RangeReading(unsigned int n_beams, const double* d, const double* angle);
 

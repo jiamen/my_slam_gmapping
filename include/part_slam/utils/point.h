@@ -148,10 +148,10 @@ orientedpoint<T,A> absoluteDifference(const orientedpoint<T,A>& p1, const orient
     double s = sin(p2.theta), c = cos(p2.theta);
     return orientedpoint<T, A> (c*delta.x + s*delta.y,
                                -s*delta.x + c*delta.y,
-                                delta.theta);
+                                delta.theta);                   // 计算(p1-p2)的相对量在p1下的表示
 }
 
-// 两个位姿的和 p2表示增量。该函数表示在p1的位姿上，加上一个p2的增量   ?????????????
+// 两个位姿的和 p2表示增量。 该函数表示在p1的位姿上，加上一个p2的增量   ?????????????
 template <class T, class A>
 orientedpoint<T,A> absoluteSum(const orientedpoint<T,A>& p1, const orientedpoint<T,A>& p2)
 
@@ -176,7 +176,7 @@ struct pointcomparator
 {
     bool operator () (const point<T>& a, const point<T>& b) const
     {
-        return a.z < b.x || (a.x == b.x && a.y < b.y);
+        return a.x < b.x || (a.x == b.x && a.y < b.y);
     }
 };
 
@@ -185,11 +185,11 @@ template <class T>
 struct pointradialcomparator
 {
     point<T> origin;
-    bool operator () (const point<T>& a, const point<T>& b) const
+    bool operator () (const point<T>& a, const point<T>& b) const       // 重载括号运算符
     {
         point<T> delta1 = a - origin;
         point<T> delta2 = b - origin;
-        return (atan2(delta1.y, delta2.y) < atan2(delta2.y, delta2.x));
+        return (atan2(delta1.y, delta1.y) < atan2(delta2.y, delta2.x));
     }
 };
 
@@ -275,6 +275,7 @@ inline double euclidianDist(const point<T>& p1, const orientedpoint<T,A>& p2 )
 {
     return hypot(p1.x-p2.x, p1.y-p2.y);
 }
+
 
 
 // 几个不同类型的重定向指令

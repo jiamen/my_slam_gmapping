@@ -16,8 +16,8 @@ template <class Particle, class Numeric>
 struct uniform_resampler
 {
     std::vector<unsigned int> resampleIndexes(const std::vector<Particle>& particles, int nparticles=0) const;
-    std::vector<Particle> resample(const std::vector<Particle>& particles, int nparticles=0) const;
-    Numeric neff(const std::vector<Particle>* particles) const;
+    // std::vector<Particle> resample(const std::vector<Particle>& particles, int nparticles=0) const;
+    // Numeric neff(const std::vector<Particle>* particles) const;
 };
 
 
@@ -38,7 +38,7 @@ std::vector<unsigned int> uniform_resampler<Particle, Numeric>::resampleIndexes(
     }
 
     if (nparticles > 0)
-        n = particles;
+        n = nparticles;
 
     // compute the interval 计算间隔，其实就是权重的平均值
     Numeric interval = cweight/n;
@@ -67,6 +67,8 @@ std::vector<unsigned int> uniform_resampler<Particle, Numeric>::resampleIndexes(
     return indexes;
 }
 
+
+/*
 template <class Particle, class Numeric>
 std::vector<Particle> uniform_resampler<Particle, Numeric>::resample(const std::vector<Particle> &particles,
                                                                      int nparticles) const
@@ -126,5 +128,7 @@ Numeric uniform_resampler<Particle, Numeric>::neff(const std::vector<Particle> *
 
     return sum * sum / cum;         // 和的平方 / 平方和
 }
+*/
+
 
 #endif // _MY_SLAM_GMAPPING_PARTICLEFILTER_H_

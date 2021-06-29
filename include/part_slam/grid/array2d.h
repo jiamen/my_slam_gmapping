@@ -7,7 +7,6 @@
 
 #include <assert.h>
 #include "../utils/point.h"
-#include "accessstate.h"
 #include <iostream>
 
 namespace GMapping
@@ -23,7 +22,7 @@ template <class Cell, const bool debug=false>
 class Array2D
 {
 protected:
-    int m_xsize, m_ysize;           // 栅格地图的大小
+    int m_xsize, m_ysize;           // 栅格地图的尺寸大小
 
 public:
     // 每个地图指向所有栅格的二级指针
@@ -31,11 +30,10 @@ public:
 
     // 构造函数，参数栅格地图大小，为每个栅格申请内存
     Array2D(int x_size=0, int y_size=0);
-
-    // 重载 = 运算符
-    Array2D& operator = (const Array2D &);
     // 重载的构造函数，根据Array2D对象作为参数，为每个栅格申请内存
     Array2D(const Array2D<Cell, debug> &);
+    // 重载 = 运算符
+    // Array2D& operator = (const Array2D &);
 
     // 析构函数，销毁整个地图每个栅格的内存
     ~Array2D();
@@ -56,14 +54,16 @@ public:
     inline const Cell& cell(int x, int y) const;
     inline const Cell& cell(const IntPoint& p) const {  return cell(p.x, p.y);  }
 
-    inline AccessibilityState cellState(int x, int y) const { return (AccessibilityState) (isInside(x,y) ? (Inside|Allocated) : Outside); }
-    inline AccessibilityState cellState(const IntPoint& p) const { return cellState(p.x, p.y); }
+    // inline AccessibilityState cellState(int x, int y) const { return (AccessibilityState) (isInside(x,y) ? (Inside|Allocated) : Outside); }
+    // inline AccessibilityState cellState(const IntPoint& p) const { return cellState(p.x, p.y); }
 
     inline int getPatchSize() const { return 0; }
     inline int getPatchMagnitude() const { return 0; }
 
 
     inline Cell** cells()   { return m_cells; }         // 返回栅格地图
+
+    // 获取二维栅格的XY尺寸
     inline int getXSize() const { return m_xsize; }     // 返回栅格地图的行数
     inline int getYSize() const { return m_ysize; }
 };
@@ -87,6 +87,7 @@ Array2D<Cell, debug>::Array2D(int x_size, int y_size)
     }
 }
 
+/*
 // 相同类型的Array2D对象，可以进行 = 赋值操作
 template <class Cell, const bool debug>
 Array2D<Cell, debug>& Array2D<Cell, debug>::operator=(const Array2D<Cell, debug>& g)
@@ -112,6 +113,7 @@ Array2D<Cell, debug>& Array2D<Cell, debug>::operator=(const Array2D<Cell, debug>
 
     return *this;
 }
+*/
 
 // 根据Array2D对象作为参数，为整个栅格地图的每个栅格申请内存
 template <class Cell, const bool debug>

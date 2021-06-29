@@ -26,11 +26,14 @@ include_directories(
 )
 
 add_executable(my_slam_gmapping src/part_ros/main.cpp
+                                src/part_ros/my_slam_gmapping.cpp
+
+                                src/part_data/lidar_undistortion.cpp
 
                                 src/part_slam/motionmodel/motionmodel.cpp
-                                src/part_slam/utils/stat.cpp
+                                # src/part_slam/utils/stat.cpp
                                 src/part_slam/sensor_range/rangereading.cpp
-                                src/part_slam/grid/smmap.cpp
+                                # src/part_slam/grid/smmap.cpp
                                 src/part_slam/gridfastslam/gridslamprocessor.cpp
                                 src/part_slam/scanmatcher/scanmatcher.cpp
 )

@@ -5,9 +5,13 @@
 #ifndef _MY_SLAM_GMAPPING_HARRAY2D_H_
 #define _MY_SLAM_GMAPPING_HARRAY2D_H_
 
+
+#include <memory>
 #include <set>
 // 必须说明的是set关联式容器,在set中每个元素的值都唯一，而且系统能根据元素的值自动进行排序
 // map 和 set的插入删除效率 比 用其他序列容器高
+
+
 
 #include "../utils/point.h"
 #include "../utils/autoptr.h"
@@ -17,10 +21,15 @@
 namespace GMapping
 {
 
+// 枚举类型：一个栅格有三种状态：占用、空闲、未知
+enum AccessibilityState{Outside=0x0, Inside=0x1, Allocated=0x2};
+
+
 // 这里的cell在gmapping里面指的是PointAccumulator，  Storage为HierarchicalArray2D<PointAccumulator>
 /*
+ *  地图  》》 地图块 》》 栅格
 	HierarchicalArray2D 类继承自 Array2D ，成员变量存在一个指向地图块的二级指针，Cell ** m_cells;
-	所以，该类是一个二维patch数组，一个patch就是一个地图块，一个二级指针，指向一块地图
+	所以，该类是一个二维patch数组，一个patch就是一个地图块，      一个二级指针，指向一块地图
 	一个patch包含2^m_patchMagnitude * 2^m_patchMagnitude个栅格
 	也就是说地图实际上是分为两层的，第一层的元素为Patch（每一块地图块） 第二层的元素为cell（每一个栅格）
 
@@ -36,7 +45,8 @@ namespace GMapping
 // HierarchicalArray2D 的一个对象就是一个 存储“地图补丁”的二维数组（栅格地图）
 
 template <class Cell>
-class HierarchicalArray2D : public Array2D< autoptr< Array2D<Cell> > >
+// class HierarchicalArray2D : public Array2D< autoptr< Array2D<Cell> > >
+class HierarchicalArray2D: public Array2D<std::shared_ptr< Array2D<Cell> > >
 {
 public:
     typedef std::set< point<int>, pointcomparator<int> > PointSet;
@@ -46,8 +56,8 @@ protected:
     virtual Array2D<Cell>* createPatch(const IntPoint& p) const;
 
     PointSet m_activeArea;  // 存储地图中使用到的Cell的坐标
-    int m_patchMagnitude;   // patch的大小等级
-    int m_patchSize;		// patch的实际大小
+    int m_patchMagnitude;   // patch的大小等级     2的指数项
+    int m_patchSize;		// patch的实际大小  m_patchSize = 1<<m_patchMagnitude = 2^m_patchMagnitude
 
 
 public:
@@ -57,19 +67,19 @@ public:
 
     // 重载=等号运算符
     HierarchicalArray2D& operator=(const HierarchicalArray2D& hg);
-
     // 析构函数
     virtual ~HierarchicalArray2D() {  }
 
     // 调整存储“地图补丁”的二维数组的大小
     void resize(int ix_min, int iy_min, int ix_max, int iy_max);
+
     // 输入“栅格”的 栅格坐标 做入口参数，返回“地图补丁”的“栅格坐标”（就是地图补丁的坐标），也就是一个栅格属于哪个地图补丁
     inline IntPoint patchIndexes(int x, int y) const;
     inline IntPoint patchIndexes(const IntPoint& p) const   { return patchIndexes(p.x, p.y); }
 
     // 输入“栅格”的 栅格坐标 做入口参数，返回该“地图补丁”的内存是否已经分配
     inline bool isAllocated(int x, int y) const;
-    inline bool isAllocated(const IntPoint& p) const    { return isAllocated(p.x, p.y); }
+    inline bool isAllocated(const IntPoint& p) const        { return isAllocated(p.x, p.y); }
 
     // 输入“栅格”的 栅格坐标 做入口参数，返回一个栅格对象
     inline Cell& cell(int x, int y);
@@ -96,24 +106,24 @@ public:
 // 这样的做法就是为了节省内存
 template <class Cell>                       // 比如地图大小x_size=128， patchMagnitude=5     128/(2^5) = 4个地图块patch， Array2D初始化的不是地图栅格，而是patch
 HierarchicalArray2D<Cell>::HierarchicalArray2D(int x_size, int y_size, int patchMagnitude)
-        : Array2D< autoptr< Array2D<Cell> > >::Array2D((x_size>>patchMagnitude), (y_size>>patchMagnitude))
+        : Array2D<std::shared_ptr< Array2D<Cell> > >::Array2D((x_size>>patchMagnitude), (y_size>>patchMagnitude))
 {
     m_patchMagnitude = patchMagnitude;      // 地图补丁的大小等级    5
-    m_patchSize = 1<<m_patchMagnitude;      // 每块地图补丁的边大小，而非每块地图补丁中的栅格数目
+    m_patchSize = 1<<m_patchMagnitude;      // 每块地图补丁的边大小，而非每块地图补丁中的栅格数目，栅格数目为 2^5 * 2^5
 }
 
 // 拷贝构造函数
 // 这里调用了Array2D的构造函数，为每块 “地图补丁” 申请了内存，存储的都是每一个patch（地图补丁），而非地图栅格
 template <class Cell>
 HierarchicalArray2D<Cell>::HierarchicalArray2D(const HierarchicalArray2D& hg)
-        :Array2D<autoptr< Array2D<Cell> > >::Array2D((hg.m_xsize>>hg.m_patchMagnitude), (hg.m_ysize>>hg.m_patchMagnitude))  // added by cyrill: if you have a resize error, check this again
+        :Array2D<std::shared_ptr< Array2D<Cell> > >::Array2D((hg.m_xsize>>hg.m_patchMagnitude), (hg.m_ysize>>hg.m_patchMagnitude))  // added by cyrill: if you have a resize error, check this again
 {
     this->m_xsize = hg.m_xsize;
     this->m_ysize = hg.m_ysize;
-    this->m_cells = new autoptr< Array2D<Cell> >*[this->m_xsize];
+    this->m_cells = new std::shared_ptr< Array2D<Cell> >*[this->m_xsize];
     for (int x=0; x<this->m_xsize; x ++)
     {
-        this->m_cells[x] = new autoptr< Array2D<Cell> >[this->m_ysize];
+        this->m_cells[x] = new std::shared_ptr< Array2D<Cell> >[this->m_ysize];
         for (int y=0; y<this->m_ysize; y ++)
             this->m_cells[x][y] = hg.m_cells[x][y];
     }
@@ -133,9 +143,9 @@ HierarchicalArray2D<Cell>& HierarchicalArray2D<Cell>::operator=(const Hierarchic
 
         this->m_xsize=hg.m_xsize;
         this->m_ysize=hg.m_ysize;
-        this->m_cells=new autoptr< Array2D<Cell> >*[this->m_xsize];
+        this->m_cells=new std::shared_ptr< Array2D<Cell> >*[this->m_xsize];
         for (int i=0; i<this->m_xsize; i++)
-            this->m_cells[i]=new autoptr< Array2D<Cell> > [this->m_ysize];
+            this->m_cells[i]=new std::shared_ptr< Array2D<Cell> > [this->m_ysize];
     }
 
     for (int x=0; x<this->m_xsize; x++)
@@ -156,19 +166,23 @@ HierarchicalArray2D<Cell>& HierarchicalArray2D<Cell>::operator=(const Hierarchic
 template <class Cell>
 void HierarchicalArray2D<Cell>::resize(int x_min, int y_min, int x_max, int y_max)
 {
-    // 新地图补丁数组的尺寸
+    // 新地图补丁数组的尺寸,得到x轴和y轴的大小
     int x_size = x_max - x_min;
     int y_size = y_max - y_min;
-    // 为新的“地图补丁”二维数组申请内存
-    autoptr< Array2D<Cell> > ** new_cells = new autoptr< Array2D<Cell> > *[x_size];
+
+    // 为新的“地图补丁”二维数组申请内存： 每块地图patch 包含 若干个栅格
+    std::shared_ptr< Array2D<Cell> > ** new_cells(new std::shared_ptr< Array2D<Cell> > *[x_size]);
     for (int x=0; x<x_size; x ++)
     {
-        new_cells[x] = new autoptr< Array2D<Cell> >[y_size];
+        // new_cells[x] = new autoptr< Array2D<Cell> >[y_size];
+        new_cells[x] = new std::shared_ptr< Array2D<Cell> >[y_size];
         for (int y=0; y<y_size; y++)
         {
-            new_cells[x][y] = autoptr< Array2D<Cell> >(0);  // 指向为NULL
+            // new_cells[x][y] = autoptr< Array2D<Cell> >(0);  // 指向为NULL
+            new_cells[x][y] = std::shared_ptr<Array2D<Cell>> (0);
         }
     }
+
     // x_min、y_min最小值为0，因为地图坐标没有负值的缘故
     int dx = x_min < 0 ? 0 : x_min;
     int dy = y_min < 0 ? 0 : y_min;
@@ -180,17 +194,17 @@ void HierarchicalArray2D<Cell>::resize(int x_min, int y_min, int x_max, int y_ma
     {
         for (int y=dy; y<Dy; y ++)
         {
-            new_cells[x-x_min][y-y_min]=this->m_cells[x][y];
+            new_cells[x-x_min][y-y_min] = this->m_cells[x][y];
         }
-        delete [] this->m_cells[x];     // 销毁每一列，从小向大销毁
+        delete[] this->m_cells[x];     // 销毁每一列，从小向大销毁
     }
-    delete [] this->m_cells;
-    this->m_cells = new_cells;      // 新的二级指针指向老的二级指针
-    this->m_xsize = x_size;         // 新的存储“地图补丁”的二维数组大小
+    delete[] this->m_cells;
+    this->m_cells = new_cells;          // 新的二级指针指向老的二级指针
+    this->m_xsize = x_size;             // 新的存储“地图补丁”的二维数组大小
     this->m_ysize = y_size;
 }
 
-// 输入“栅格”栅格坐标 做入口函数，返回“地图补丁”的栅格坐标（第一层）
+// 输入“栅格”栅格坐标 做入口函数，返回“地图补丁”的栅格坐标（第一层）, 寻找 小栅格 所属的 地图补丁大栅格patch 的坐标
 template <class Cell>
 IntPoint HierarchicalArray2D<Cell>::patchIndexes(int x, int y) const
 {
@@ -212,7 +226,7 @@ template <class Cell>
 bool HierarchicalArray2D<Cell>::isAllocated(int x, int y) const
 {
     IntPoint c = patchIndexes(x, y);
-    autoptr< Array2D<Cell> >& ptr = this->m_cells[c.x][c.y];
+    std::shared_ptr< Array2D<Cell> >& ptr = this->m_cells[c.x][c.y];
     return (ptr != 0);
 }
 
@@ -222,12 +236,12 @@ Cell& HierarchicalArray2D<Cell>::cell(int x, int y)
 {
     IntPoint c = patchIndexes(x, y);        // 得到栅格坐标 所在的 补丁坐标
     assert(this->isInside(c.x, c.y));       // “地图补丁”的“栅格坐标”是否在整个存储“地图补丁”的二维数组中
-    if (!this->m_cells[c.x][c.y])           // 该指针存在有意义的指向
+    if (!this->m_cells[c.x][c.y])           // 若指向为空，说明还未申请则为其申请内存空间
     {
-        Array2D<Cell>* patch = createPatch(IntPoint(x,y));  // new一个patch（地图补丁）
-        this->m_cells[c.x][c.y] = autoptr<Array2D<Cell>>(patch);
+        Array2D<Cell>* patch = createPatch(IntPoint(x,y));  // new一个patch（地图补丁） 为每一块地图补丁patch申请内存
+        this->m_cells[c.x][c.y] = std::shared_ptr<Array2D<Cell>>(patch);    // 该地图补丁指向了此时的patch指针，不再为空了
     }
-    autoptr< Array2D<Cell> >& ptr = this->m_cells[c.x][c.y];
+    std::shared_ptr< Array2D<Cell> >& ptr = this->m_cells[c.x][c.y];
     return (*ptr).cell( IntPoint(x-(c.x<<m_patchMagnitude), y-(c.y<<m_patchMagnitude)) );
 }
 template <class Cell>
@@ -235,7 +249,7 @@ const Cell& HierarchicalArray2D<Cell>::cell(int x, int y) const
 {
     assert(isAllocated(x,y));
     IntPoint c = patchIndexes(x, y);
-    const autoptr< Array2D<Cell> >& ptr = this->m_cells[c.x][c.y];
+    const std::shared_ptr< Array2D<Cell> >& ptr = this->m_cells[c.x][c.y];
     return (*ptr).cell( IntPoint(x-(c.x<<m_patchMagnitude),y-(c.y<<m_patchMagnitude)) );
 }
 
@@ -287,7 +301,7 @@ void HierarchicalArray2D<Cell>::allocActiveArea()
 {
     for (PointSet::const_iterator it=m_activeArea.begin(); it!=m_activeArea.end(); it ++)
     {
-        const autoptr< Array2D<Cell> >& ptr = this->m_cells[it->x][it->y];
+        const std::shared_ptr< Array2D<Cell> >& ptr = this->m_cells[it->x][it->y];
         Array2D<Cell>* patch = 0;
         // 如果对应的active没有被分配内存 则进行内存分配
         // 一个patch的内存没有分配的话，是没有内存存储栅格的，也就是没有array2D的对象的二级指针
@@ -300,7 +314,7 @@ void HierarchicalArray2D<Cell>::allocActiveArea()
         {
             patch = new Array2D<Cell>(*ptr);
         }
-        this->m_cells[it->x][it->y] = autoptr< Array2D<Cell> >(patch);
+        this->m_cells[it->x][it->y] = std::shared_ptr< Array2D<Cell> >(patch);
     }
 }
 
