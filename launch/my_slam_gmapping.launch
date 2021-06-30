@@ -29,7 +29,8 @@
         <param name="stt" value="0.02"/>
         <param name="linearUpdate" value="0.3"/>
         <param name="angularUpdate" value="0.3"/>
-        <param name="temporalUpdate" value="5.0"/>
+        <!-- 地图更新的秒数间隔: 5秒 -->
+        <param name="temporalUpdate" value="3.0"/>
         <param name="resampleThreshold" value="0.5"/>
         <param name="particles" value="50"/>
         <param name="xmin" value="-1.0"/>

@@ -67,7 +67,7 @@ void GridSlamProcessor::setMotionModelParameters(double srr, double srt, double 
     m_motionModel_.stt = stt;           // stt 旋转运动造成的角度误差的方差
 }
 
-
+// 设置更新参数，只有当雷达走过一定的距离 或者 旋转过一定的角度才重新处理一帧数据
 void GridSlamProcessor::setUpdateDistances(double linear, double angular, double resampleThreshold)
 {
     m_linearThresholdDistance  = linear;
@@ -139,7 +139,7 @@ bool GridSlamProcessor::processScan(const RangeReading& reading, int adaptPartic
     Point temp(move.x, move.y);
     // 激光雷达在里程计作用下的累计移动线性距离和累计角度变换，用于判断是否，进行核心算法处理
     // 处理完后，m_linearDistance 和 m_angularDistance  清零
-    m_linearDistance_  += sqrt(temp*temp);          // 两点之间距离公式
+    m_linearDistance_  += sqrt(temp * temp);          // 两点之间距离公式
     m_angularDistance_ += fabs(move.theta);
 
     // 更新上一次的激光雷达的里程计位姿
@@ -168,7 +168,6 @@ bool GridSlamProcessor::processScan(const RangeReading& reading, int adaptPartic
         // reading_copy数据用来放在每一个节点，构建地图用
         RangeReading* reading_copy = new RangeReading(beam_number, &(reading.m_dists[0]), &(reading.m_angles[0]));
 
-
         // 如果不是第一帧数据
         if (m_count_ > 0)
         {
@@ -186,7 +185,7 @@ bool GridSlamProcessor::processScan(const RangeReading& reading, int adaptPartic
             // 重采样
             if(resample(plainReading, adaptParticles, reading_copy))
             {
-                //进行重采样之后，粒子的权重又会发生变化，更新归一化的权重，否则无需normalize
+                // 进行重采样之后，粒子的权重又会发生变化，更新归一化的权重，否则无需normalize
                 normalize();
             }
         }
@@ -200,7 +199,7 @@ bool GridSlamProcessor::processScan(const RangeReading& reading, int adaptPartic
 
                 // 为每个粒子创建路径的第一个节点。该节点的权重为0,父节点为it->node(这个时候为NULL)。
                 TNode* node = new TNode(it->pose, it->node);
-                node->reading = reading_copy;    //根节点的激光雷达数据
+                node->reading = reading_copy;    // 根节点的激光雷达数据
                 it->node = node;
             }
             // 第一帧数据权重归一化更新

@@ -81,7 +81,7 @@ private:
     bool got_map_;                      // 获得地图的标志
 
     // 使用nav_msgs::GetMap::Response，主要是方便被订阅
-    nav_msgs::GetMap::Response map_;           //用来发布map的实体对象
+    nav_msgs::GetMap::Response map_;           // 用来发布map的实体对象
 
     ros::Duration map_update_interval_; // 地图更新间隔，发布地图时用，单位秒，每个几秒更新一次
     tf::Transform map_to_odom_;         // 用来描述map到odom互斥锁
@@ -119,7 +119,7 @@ private:
     double temporalUpdate_;
     double resampleThreshold_;
     int particles_;
-    double x_min_;
+    double x_min_;                      // smap的大小
     double y_min_;
     double x_max_;
     double y_max_;

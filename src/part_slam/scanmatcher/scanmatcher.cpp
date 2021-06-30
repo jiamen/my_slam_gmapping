@@ -57,7 +57,7 @@ ScanMatcher::~ScanMatcher()
 }
 
 // 设置laser的参数
-void ScanMatcher::setLaserParameters(unsigned int beams, double *angles)
+void ScanMatcher::setLaserParameters(unsigned int beams, double* angles)
 {
     assert(beams < LASER_MAXBEAMS);             // 激光雷达最大的激光束的数量为 2048
     m_laserBeams = beams;
@@ -178,7 +178,7 @@ double ScanMatcher::optimize(OrientedPoint& pnew,    const ScanMatcherMap& map,
             // 计算得分 = 增益 * score
             double localScore = odo_gain * score(map, localPose, readings);
 
-            /*如果得分更好，则更新得分，和位姿*/
+            /* 如果得分更好，则更新得分，和位姿 */
             if (localScore > currentScore)
             {
                 currentScore  = localScore;
@@ -382,7 +382,6 @@ void ScanMatcher::computeMap(ScanMatcherMap& map, const OrientedPoint& p, const 
         }
     }
 }
-
 
 
 };

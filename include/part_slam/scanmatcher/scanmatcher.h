@@ -89,7 +89,7 @@ inline double ScanMatcher::score(const ScanMatcherMap& map, const OrientedPoint&
 
     // 如果激光击中了某个点，那么沿着激光方向的freeDelta距离的地方，要是空闲才可以
     unsigned int skip = 0;
-    double freeDelta = map.getDelta()*m_freeCellRatio;          // 默认0.05×1.414，表示斜着一个栅格的距离
+    double freeDelta = map.getDelta() * m_freeCellRatio;          // 默认0.05×1.414，表示斜着一个栅格的距离
 
     // 枚举所有的激光束，有时为了提高计算速度，不需要对所有的激光数据进行计算
     for (const double* r=readings+m_initialBeamsSkip; r<readings+m_laserBeams; r ++, angle ++)     //

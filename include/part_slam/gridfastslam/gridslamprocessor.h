@@ -274,8 +274,7 @@ inline void GridSlamProcessor::normalize()
         权重 = wi/w
         neff = 1 / w*w
     */
-    //归一化权重，除以所有粒子权重之和
-
+    // 归一化权重，除以所有粒子权重之和
     m_neff = 0;
     for (std::vector<double>::iterator it = m_weights_.begin(); it != m_weights_.end(); it ++)
     {
@@ -307,24 +306,24 @@ inline bool GridSlamProcessor::resample(const double* plainReading, int adaptSiz
         // 重采样之后新粒子的重采样之前的序号
         m_indexes_ = resampler.resampleIndexes(m_weights_, adaptSize);
 
-        //临时存储重采样之后的粒子
+        // 临时存储重采样之后的粒子
         ParticleVector temp;
 
-        //枚举每一个要被保留的粒子，m_indexes[i] 会重复
-        for (unsigned int i=0; i<m_indexes_.size(); i++)
+        // 枚举每一个要被保留的粒子，m_indexes[i] 会重复
+        for (unsigned int i=0; i<m_indexes_.size(); i ++)
         {
-            //得到当前的保留的粒子
-            Particle & p=m_particles_[m_indexes_[i]];
+            // 得到当前的保留的粒子
+            Particle & p = m_particles_[m_indexes_[i]];
 
-            //每一个需要保留下来的粒子都需要在路径中增加一个新的节点
-            TNode* node=0;
-            TNode* oldNode=oldGeneration[m_indexes_[i]];
+            // 每一个需要保留下来的粒子都需要在路径中增加一个新的节点
+            TNode* node = 0;
+            TNode* oldNode = oldGeneration[m_indexes_[i]];
 
-            //创建一个新的节点 改节点的父节点为oldNode
+            // 创建一个新的节点 改节点的父节点为oldNode
             node=new TNode(p.pose, oldNode);
             node->reading = reading;
 
-            //这个要保留下来的粒子
+            // 这个要保留下来的粒子
             temp.push_back(p);
             temp.back().node=node;
         }
@@ -340,15 +339,15 @@ inline bool GridSlamProcessor::resample(const double* plainReading, int adaptSiz
             temp[i].setWeight(0);
 
             // 拓展地图大小、找到地图的有效区域，单位patch,申请内存、更新每个栅格的内容
-            m_matcher.computeMap(temp[i].map,temp[i].pose,plainReading);
+            m_matcher.computeMap(temp[i].map, temp[i].pose, plainReading);
 
-            //从temp中读取重采样的粒子
+            // 从temp中读取重采样的粒子
             m_particles_.push_back(temp[i]);
         }
 
         hasResampled = true;
     }
-        /*否则的话*/
+    /* 否则的话 */
     else
     {
         //不进行重采样的话，粒子的权重不变。只为轨迹创建一个新的节点
